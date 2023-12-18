@@ -13,35 +13,32 @@ manage commits as a patch stack
 SYNOPSIS
 --------
 
-|   **git ps init** [<name>]
-|   **git ps rm** [-f] <name>
+|   **git ps new** [<name>]
+|   **git ps checkout** [<name>]
+|   **git ps delete** [-f]
 |   **git ps list**
 |   **git ps log**
 |   **git ps show** <id-or-range> [<id-or-range>...]
-|   **git ps integrate** <id-or-range> [<id-or-range>...]
+|   **git ps isolate** <id-or-range> [<id-or-range>...]
+|   **git ps integrate**
 |   **git ps rebase** [-i]
 |   **git ps pull**
-|   **git ps isolate** <id-or-range> [<id-or-range>...]
-
-
-DESCRIPTION
------------
-
-Patch stacks are implemented as branches which have an upstream configured
-separately from the usual git configuration (to prevent `git-push(1)` from
-merging unfinished patches).  The `git-ps(1)` command will set any needed
-configuration options temporarily to perform operations in a controlled
-environment.
 
 
 COMMANDS
 --------
 
-**init** [<name>]
-  Creates a new patch stack on top of the current branch.
+**new** [<name>]
+  Creates a new patch stack on top of the current branch.  If no <name> is
+  given, the default is to name it after the current branch.
 
-**rm** [-f] <name>
-  Deletes a patch stack.
+**checkout** [<name>]
+  Switches to the named patch stack (or the default stack for the current
+  branch).
+
+**delete** [-f]
+  Deletes the current patch stack.  The ``-f`` option is required if the stack
+  is not fully integrated to its upstream.
 
 **list**
   Lists all patch stacks in the current repository.
@@ -53,20 +50,52 @@ COMMANDS
 **show** <id-or-range> [<id-or-range>...]
   Displays the changes made by the specified patch.
 
-**integrate** <id-or-range> [<id-or-range>...]
-  Merges the specified patch(es) into the upstream branch.
+**isolate** <id-or-range> [<id-or-range>...]
+  Switches to a detached patch stack with only the given commit(s) applied on
+  top of the base branch.
+
+**integrate**
+  Merges the current patch stack into the upstream branch.  To merge only a
+  portion of a stack, use ``git ps isolate`` first.
 
 **rebase** [-i]
   Rebases the current patch stack on top of any new commits in its upstream.
   Pass ``-i`` to rebase interactively.
 
 **pull**
-  Runs ``git pull`` on the upstream branch and then ``git ps rebase`` on the
+  Runs ``git pull`` on the upstream branch and then ``git ps rebase`` on the
   current patch stack.
 
-**isolate** <id-or-range> [<id-or-range>...]
-  Switches to a detached patch stack with only the given commit(s) applied on
-  top of the base branch.
+
+DISCUSSION
+----------
+
+Patch stacks are implemented as branches which have an upstream configured
+separately from the usual git configuration (to prevent `git-push(1)` from
+merging unfinished patches).  The intended workflow is as follows:
+
+ 1. Create a patch stack with ``git ps new``.  The stack will have a name like
+    ``main%ps``.
+
+ 2. Add and manipulate patches as normal commits.
+
+ 3. If needed, reorder patches using ``git ps rebase -i`` or edit the top
+    patch with ``git commit --amend``.
+
+ 4. Fetch and rebase onto the latest upstream using ``git ps pull`` or rebase
+    the patch stack independently with ``git ps rebase``.
+
+ 5. Test a patch or set of patches using ``git ps isolate``.
+
+ 6. If the patches are ready, merge the isolated stack into the upstream branch
+    with ``git ps integrate``; otherwise, return to the patch stack with
+    ``git checkout`` or ``git switch``.
+
+
+SEE ALSO
+--------
+`git-rebase(1)`
+
 
 AUTHOR
 ------

@@ -35,17 +35,18 @@ branch=
 
 usage() {
 	cat <<- EOF
-		usage: $cmd init [<name>]
-		   or: $cmd rm [-f] <name>
+		usage: $cmd new [<name>]
+		   or: $cmd checkout [<name>]
+		   or: $cmd delete [-f]
 		   or: $cmd list
 		   or: $cmd log
 		   or: $cmd show <id-or-range> [<id-or-range>...]
-		   or: $cmd integrate <id-or-range> [<id-or-range>...]
-		   or: $cmd rebase
-		   or: $cmd pull
 		   or: $cmd isolate <id-or-range> [<id-or-range>...]
+		   or: $cmd integrate
+		   or: $cmd rebase [-i]
+		   or: $cmd pull
 
-		id-or-range can be a patch number such as 2 or a range like 1-4.
+		<id-or-range> can be a patch number such as 2 or a range like 1-4.
 	EOF
 }
 
@@ -72,10 +73,13 @@ require_non_ps_branch() {
 	if [ -z "$branch" ]; then
 		die "\`%s %s' requires a branch to be checked out" "$cmd" "$subcommand"
 	fi
-	if git symbolic-ref -q "refs/ps/$branch/upstream" >/dev/null; then
+  case $branch in
+    ps/*) die "branch \`%s' is already a patch stack" "$branch";;
+  esac
+	if git symbolic-ref -q "refs/$branch/upstream" >/dev/null; then
 		die "branch \`%s' is already a patch stack" "$branch"
 	fi
-	if git rev-parse --verify -q "refs/ps/$branch/base^{commit}" >/dev/null; then
+	if git rev-parse --verify -q "refs/$branch/base^{commit}" >/dev/null; then
 		die "branch \`%s' is already a patch stack" "$branch"
 	fi
 }
@@ -92,6 +96,11 @@ require_ps() {
 		return
 	fi
 
+  case $branch in
+    ps/*) ;;
+    *) die "current branch \`%s' is not a patch stack" "$branch";;
+  esac
+
 	# Not in detached HEAD state, so there should be no detached
 	# patch stack active.  Remove the temporary refs if they
 	# exist.
@@ -99,10 +108,10 @@ require_ps() {
 	git update-ref -d GIT_PS_BASE 2>/dev/null || true
 
 	# Get upstream and base from git config
-	if ! upstream="$(git symbolic-ref -q "refs/ps/$branch/upstream")"; then
+	if ! upstream="$(git symbolic-ref -q "refs/$branch/upstream")"; then
 		die "could not get upstream for branch \`%s' (not a patch stack?)" "$branch"
 	fi
-	if ! base="$(git rev-parse --verify -q "refs/ps/$branch/base^{commit}" 2>/dev/null)"; then
+	if ! base="$(git rev-parse --verify -q "refs/$branch/base^{commit}" 2>/dev/null)"; then
 		die "could not get base for branch \`%s' (not a patch stack?)" "$branch"
 	fi
 
@@ -137,33 +146,58 @@ parse_patchnums() {
 	done
 }
 
-git_ps_init() {
+git_ps_new() {
 	require_non_ps_branch
 
 	upstream=$branch
-	branch="$upstream%${1:-ps}"
+	branch="ps/${1:-$upstream}"
 
 	# Create new branch and record the upstream and base
-	git switch -c "$branch"
-	git symbolic-ref "refs/ps/$branch/upstream" "$upstream"
-	git update-ref "refs/ps/$branch/base" "$upstream" ''
+  git switch -c "$branch"
+	git symbolic-ref "refs/$branch/upstream" "$upstream"
+	git update-ref "refs/$branch/base" "$upstream" ''
 
 	#git config "branch.$branch.rebase" true
 }
 
-git_ps_rm() {
-	die "\`%s' not yet implemented" "$subcommand"
+git_ps_checkout() {
+  get_branch
 
-	# check to see if fully integrated
+  if [ $# -lt 1 ]; then
+    require_non_ps_branch
+  else
+    branch=$1
+  fi
+  if ! git checkout "ps/$branch" -- 2>/dev/null; then
+    die "no patch stack named \`%s'" "$branch"
+  fi
+}
+
+git_ps_delete() {
+  require_ps
+
+  local force=
+  case $1 in
+    -f)
+      force=y
+      shift
+      ;;
+  esac
+
+	# check to see if fully integrated?
+  if [ -z "$force" -a "$(git rev-list --count --cherry-pick --right-only "${upstream}...${branch}")" -ne 0 ]; then
+    die "patch stack \`%s' is not fully integrated (use -f to delete anyway)" "$branch"
+  fi
+
+  git switch "${upstream#refs/heads/}"
+  git branch -D "$branch"
+	git symbolic-ref -d "refs/$branch/upstream"
+	git update-ref -d "refs/$branch/base"
 }
 
 git_ps_list() {
-	get_branch
-
 	# Lists all patch stacks
-	git for-each-ref --format='%(refname)' "refs/ps/*/upstream" |
-		sed -e 's,^refs/ps/\(.*\)/upstream$,\1,' |
-		xargs git branch --list
+  git branch --list 'ps/*'
 }
 
 git_ps_log() {
@@ -195,10 +229,10 @@ git_ps_log() {
 		sha=${sha:1}
 		case $sigil in
 			+)
-				git show -s --pretty=format:"%Cblue$(printf '%3d' "$n")%C(auto). %h %s" "$sha"
+        git -P rev-list -n1 --no-commit-header --pretty=format:"%Cblue$(printf '%3d' "$n")%C(auto)  %h  %<|(-1,trunc)%s" "$sha"
 				;;
 			=)
-				git show -s --pretty=format:"%Cblue$(printf '%3d' "$n")%Creset. [2;9m%h %s%Creset" "$sha"
+        git -P rev-list -n1 --no-commit-header --pretty=format:"%Cblue$(printf '%3d' "$n")%Creset  [2;9m%h%Creset  %<|(-1,trunc)%s" "$sha"
 				;;
 			*)
 				bug 'unexpected format from git rev-list'
@@ -223,6 +257,7 @@ git_ps_integrate() {
 	require_ps
 
 	# merge to upstream ref, update base
+  # can we squash, or will this not be detected by the original stack?
 }
 
 git_ps_rebase() {
@@ -234,6 +269,9 @@ git_ps_rebase() {
 	# is just `git ps rebase'.
 
 	# -c 'advice.skippedCherryPicks=false'
+  # --no-keep-empty --empty=drop --no-rebase-merges
+  
+  # offer to remove patch stack if now fully merged
 }
 
 git_ps_pull() {
@@ -267,7 +305,7 @@ fi
 case $subcommand in
 	'') usage >&2;;
 	help|-h) exec git help ps;;
-	init|rm|list|log|show|integrate|rebase|pull|isolate)
+	new|checkout|delete|list|log|show|integrate|rebase|pull|isolate)
 		"git_ps_$subcommand" "$@"
 		;;
 	*)
