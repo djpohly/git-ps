@@ -21,7 +21,7 @@ SYNOPSIS
 |   **git ps show** <id-or-range> [<id-or-range>...]
 |   **git ps isolate** <id-or-range> [<id-or-range>...]
 |   **git ps integrate**
-|   **git ps rebase** [-i]
+|   **git ps rebase** [-i] [<branch>]
 |   **git ps pull**
 
 
@@ -58,9 +58,10 @@ COMMANDS
   Merges the current patch stack into the upstream branch.  To merge only a
   portion of a stack, use ``git ps isolate`` first.
 
-**rebase** [-i]
+**rebase** [-i] [<branch>]
   Rebases the current patch stack on top of any new commits in its upstream.
-  Pass ``-i`` to rebase interactively.
+  Pass ``-i`` to rebase interactively.  If a branch is specified, the stack
+  will be rebased onto it instead, and it will be set as the new upstream.
 
 **pull**
   Runs ``git pull`` on the upstream branch and then ``git ps rebase`` on the

@@ -43,7 +43,7 @@ usage() {
 		   or: $cmd show <id-or-range> [<id-or-range>...]
 		   or: $cmd isolate <id-or-range> [<id-or-range>...]
 		   or: $cmd integrate
-		   or: $cmd rebase [-i]
+		   or: $cmd rebase [-i] [<branch>]
 		   or: $cmd pull
 
 		<id-or-range> can be a patch number such as 2 or a range like 1-4.
@@ -92,28 +92,28 @@ require_ps() {
 	if [ -z "$branch" ]; then
 		# Detached HEAD, should be on a detached patch stack if
 		# anything.
+    branch=HEAD
 		upstream="$(git symbolic-ref -q GIT_PS_UPSTREAM)"
-		return
-	fi
+		base="$(git rev-parse -q GIT_PS_BASE)"
+  else
+    case $branch in
+      ps/*) ;;
+      *) die "current branch \`%s' is not a patch stack" "$branch";;
+    esac
 
-  case $branch in
-    ps/*) ;;
-    *) die "current branch \`%s' is not a patch stack" "$branch";;
-  esac
+    # Not in detached HEAD state, so there should be no detached patch stack
+    # active.  Remove the temporary refs if they exist.
+    git symbolic-ref -d GIT_PS_UPSTREAM 2>/dev/null || true
+    git update-ref -d GIT_PS_BASE 2>/dev/null || true
 
-	# Not in detached HEAD state, so there should be no detached
-	# patch stack active.  Remove the temporary refs if they
-	# exist.
-	git symbolic-ref -d GIT_PS_UPSTREAM 2>/dev/null || true
-	git update-ref -d GIT_PS_BASE 2>/dev/null || true
-
-	# Get upstream and base from git config
-	if ! upstream="$(git symbolic-ref -q "refs/$branch/upstream")"; then
-		die "could not get upstream for branch \`%s' (not a patch stack?)" "$branch"
-	fi
-	if ! base="$(git rev-parse --verify -q "refs/$branch/base^{commit}" 2>/dev/null)"; then
-		die "could not get base for branch \`%s' (not a patch stack?)" "$branch"
-	fi
+    # Get upstream and base from git config
+    if ! upstream="$(git symbolic-ref -q "refs/$branch/upstream")"; then
+      die "could not get upstream for branch \`%s' (not a patch stack?)" "$branch"
+    fi
+    if ! base="$(git rev-parse --verify -q "refs/$branch/base^{commit}" 2>/dev/null)"; then
+      die "could not get base for branch \`%s' (not a patch stack?)" "$branch"
+    fi
+  fi
 
 	# Sanity checks
 	if ! git merge-base --is-ancestor "$base" "$branch"; then
@@ -175,6 +175,10 @@ git_ps_checkout() {
 
 git_ps_delete() {
   require_ps
+  if [ "$branch" = HEAD ]; then
+    # Detached patch stack
+    die "detached patch stack does not need to be deleted explicitly"
+  fi
 
   local force=
   case $1 in
@@ -251,6 +255,14 @@ git_ps_show() {
 	git show $(parse_patchnums "$@")
 }
 
+git_ps_isolate() {
+	die "\`%s' not yet implemented" "$subcommand"
+
+	# It's ok if the current patch stack is detached; we can isolate a
+	# subset of those.
+	require_ps
+}
+
 git_ps_integrate() {
 	die "\`%s' not yet implemented" "$subcommand"
 
@@ -261,9 +273,36 @@ git_ps_integrate() {
 }
 
 git_ps_rebase() {
-	die "\`%s' not yet implemented" "$subcommand"
-
 	require_ps
+
+  local interactive=
+  case $1 in
+    -i)
+      interactive=-i
+      shift
+      ;;
+  esac
+
+  git -c 'advice.skippedCherryPicks=false' rebase \
+    --no-keep-empty --empty=drop --no-rebase-merges \
+    $interactive \
+    --onto "${1:-$upstream}" "$base"
+
+  if [ -n "$1" ]; then
+    # Need to update upstream
+    upstream=$1
+    if [ "$branch" = HEAD ]; then
+      # Detached
+      upstream_ref=GIT_PS_UPSTREAM
+      base_ref=GIT_PS_BASE
+    else
+      upstream_ref="refs/$branch/upstream"
+      base_ref="refs/$branch/base"
+    fi
+    git symbolic-ref "$upstream_ref" "$upstream"
+    git update-ref "$base_ref" "$upstream" "$base"
+    base=$upstream
+  fi
 
 	# TODO: attempt some kind of rebase to linearize patches?  maybe this
 	# is just `git ps rebase'.
@@ -277,14 +316,6 @@ git_ps_rebase() {
 git_ps_pull() {
 	die "\`%s' not yet implemented" "$subcommand"
 
-	require_ps
-}
-
-git_ps_isolate() {
-	die "\`%s' not yet implemented" "$subcommand"
-
-	# It's ok if the current patch stack is detached; we can isolate a
-	# subset of those.
 	require_ps
 }
 
