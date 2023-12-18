@@ -16,7 +16,9 @@ SYNOPSIS
 |   **git ps init** [<name>]
 |   **git ps rm** [-f] <name>
 |   **git ps list**
+|   **git ps log**
 |   **git ps show** <id-or-range> [<id-or-range>...]
+|   **git ps integrate** <id-or-range> [<id-or-range>...]
 |   **git ps rebase** [-i]
 |   **git ps pull**
 |   **git ps isolate** <id-or-range> [<id-or-range>...]
