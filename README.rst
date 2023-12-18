@@ -15,8 +15,10 @@ SYNOPSIS
 
 |   **git ps init** [<name>]
 |   **git ps list**
-|   **git ps isolate** <commit> [<commit>...]
-|   **git ps rebase**
+|   **git ps show** <id-or-range> [<id-or-range>...]
+|   **git ps rebase** [-i]
+|   **git ps pull**
+|   **git ps isolate** <id-or-range> [<id-or-range>...]
 
 
 DESCRIPTION
@@ -39,14 +41,18 @@ COMMANDS
   Lists the patches on the current stack, along with information about
   merged/unmerged upstream commits.
 
-**rebase**
+**show** <id-or-range> [<id-or-range>...]
+  Displays the changes made by the specified patch.
+
+**rebase** [-i]
   Rebases the current patch stack on top of any new commits in its upstream.
+  Pass ``-i`` to rebase interactively.
 
 **pull**
   Runs ``git pull`` on the upstream branch and then ``git ps rebase`` on the
   current patch stack.
 
-**isolate** <commit> [<commit>...]
+**isolate** <id-or-range> [<id-or-range>...]
   Switches to a detached patch stack with only the given commit(s) applied on
   top of the base branch.
 

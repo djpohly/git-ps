@@ -37,10 +37,12 @@ usage() {
 	cat <<- EOF
 		usage: $cmd init [<name>]
 		   or: $cmd list
-		   or: $cmd show <commit> [<commit>...]
-		   or: $cmd isolate <commit> [<commit>...]
-		   or: $cmd pull
+		   or: $cmd show (<id-or-range> [<id-or-range>...]
 		   or: $cmd rebase
+		   or: $cmd pull
+		   or: $cmd isolate <id-or-range> [<id-or-range>...]
+
+		id-or-range can be a patch number such as 2 or a range like 1-4.
 	EOF
 }
 
@@ -113,16 +115,23 @@ require_ps() {
 	fi
 }
 
-
-git_ps_rebase() {
-	die "\`%s' not yet implemented" "$subcommand"
-
-	require_ps
-
-	# TODO: attempt some kind of rebase to linearize patches?  maybe this
-	# is just `git ps rebase'.
-
-	# -c 'advice.skippedCherryPicks=false'
+parse_patchnums() {
+	local -a shas
+	mapfile -t shas < <(git rev-list --right-only "${upstream}...${branch}")
+	for num; do
+		case $num in
+			*-*)
+				start=${num%%-*}
+				stop=${num#*-}
+				for subnum in $(seq -- "$start" "$stop"); do
+					echo "${shas[$subnum]}"
+				done
+				;;
+			*)
+				echo "${shas[$num]}"
+				;;
+		esac
+	done
 }
 
 git_ps_init() {
@@ -137,14 +146,6 @@ git_ps_init() {
 	git update-ref "refs/ps/$branch/base" "$upstream" ''
 
 	#git config "branch.$branch.rebase" true
-}
-
-git_ps_isolate() {
-	die "\`%s' not yet implemented" "$subcommand"
-
-	# It's ok if the current patch stack is detached; we can isolate a
-	# subset of those.
-	require_ps
 }
 
 git_ps_list() {
@@ -192,6 +193,37 @@ git_ps_list() {
 	fi
 }
 
+git_ps_show() {
+	require_ps
+
+	git show $(parse_patchnums "$@")
+}
+
+git_ps_rebase() {
+	die "\`%s' not yet implemented" "$subcommand"
+
+	require_ps
+
+	# TODO: attempt some kind of rebase to linearize patches?  maybe this
+	# is just `git ps rebase'.
+
+	# -c 'advice.skippedCherryPicks=false'
+}
+
+git_ps_pull() {
+	die "\`%s' not yet implemented" "$subcommand"
+
+	require_ps
+}
+
+git_ps_isolate() {
+	die "\`%s' not yet implemented" "$subcommand"
+
+	# It's ok if the current patch stack is detached; we can isolate a
+	# subset of those.
+	require_ps
+}
+
 
 # Commands that don't require a git environment
 case $subcommand in
@@ -215,7 +247,7 @@ esac
 case $real_subcommand in
 	'') usage >&2;;
 	help|-h) exec git help ps;;
-	init|list|rebase|isolate)
+	init|list|show|rebase|pull|isolate)
 		"git_ps_$real_subcommand" "$@"
 		;;
 	*)
