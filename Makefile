@@ -7,5 +7,5 @@ doc: $(MANS)
 clean:
 	$(RM) $(MANS)
 
-%: %.rst
+git-ps.1: README.rst
 	rst2man $< > $@
