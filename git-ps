@@ -37,9 +37,10 @@ usage() {
 	cat <<- EOF
 		usage: $cmd init [<name>]
 		   or: $cmd rm [-f] <name>
-		   or: $cmd list [-a]
+		   or: $cmd list
 		   or: $cmd log
-		   or: $cmd show (<id-or-range> [<id-or-range>...]
+		   or: $cmd show <id-or-range> [<id-or-range>...]
+		   or: $cmd integrate <id-or-range> [<id-or-range>...]
 		   or: $cmd rebase
 		   or: $cmd pull
 		   or: $cmd isolate <id-or-range> [<id-or-range>...]
@@ -152,13 +153,17 @@ git_ps_init() {
 
 git_ps_rm() {
 	die "\`%s' not yet implemented" "$subcommand"
+
+	# check to see if fully integrated
 }
 
 git_ps_list() {
 	get_branch
 
 	# Lists all patch stacks
-	git for-each-ref --format='%(refname)' "refs/ps/*/upstream" | sed -e 's,^refs/ps/\(.*\)/upstream$,\1,'
+	git for-each-ref --format='%(refname)' "refs/ps/*/upstream" |
+		sed -e 's,^refs/ps/\(.*\)/upstream$,\1,' |
+		xargs git branch --list
 }
 
 git_ps_log() {
@@ -212,6 +217,14 @@ git_ps_show() {
 	git show $(parse_patchnums "$@")
 }
 
+git_ps_integrate() {
+	die "\`%s' not yet implemented" "$subcommand"
+
+	require_ps
+
+	# merge to upstream ref, update base
+}
+
 git_ps_rebase() {
 	die "\`%s' not yet implemented" "$subcommand"
 
@@ -254,7 +267,7 @@ fi
 case $subcommand in
 	'') usage >&2;;
 	help|-h) exec git help ps;;
-	init|rm|list|log|show|rebase|pull|isolate)
+	init|rm|list|log|show|integrate|rebase|pull|isolate)
 		"git_ps_$subcommand" "$@"
 		;;
 	*)

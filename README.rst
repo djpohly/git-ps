@@ -14,6 +14,7 @@ SYNOPSIS
 --------
 
 |   **git ps init** [<name>]
+|   **git ps rm** [-f] <name>
 |   **git ps list**
 |   **git ps show** <id-or-range> [<id-or-range>...]
 |   **git ps rebase** [-i]
@@ -37,12 +38,21 @@ COMMANDS
 **init** [<name>]
   Creates a new patch stack on top of the current branch.
 
+**rm** [-f] <name>
+  Deletes a patch stack.
+
 **list**
+  Lists all patch stacks in the current repository.
+
+**log**
   Lists the patches on the current stack, along with information about
   merged/unmerged upstream commits.
 
 **show** <id-or-range> [<id-or-range>...]
   Displays the changes made by the specified patch.
+
+**integrate** <id-or-range> [<id-or-range>...]
+  Merges the specified patch(es) into the upstream branch.
 
 **rebase** [-i]
   Rebases the current patch stack on top of any new commits in its upstream.
