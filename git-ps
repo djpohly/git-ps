@@ -36,7 +36,9 @@ branch=
 usage() {
 	cat <<- EOF
 		usage: $cmd init [<name>]
-		   or: $cmd list
+		   or: $cmd rm [-f] <name>
+		   or: $cmd list [-a]
+		   or: $cmd log
 		   or: $cmd show (<id-or-range> [<id-or-range>...]
 		   or: $cmd rebase
 		   or: $cmd pull
@@ -148,7 +150,18 @@ git_ps_init() {
 	#git config "branch.$branch.rebase" true
 }
 
+git_ps_rm() {
+	die "\`%s' not yet implemented" "$subcommand"
+}
+
 git_ps_list() {
+	get_branch
+
+	# Lists all patch stacks
+	git for-each-ref --format='%(refname)' "refs/ps/*/upstream" | sed -e 's,^refs/ps/\(.*\)/upstream$,\1,'
+}
+
+git_ps_log() {
 	require_ps
 
 	# config=(
@@ -238,17 +251,11 @@ if [ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" != true ]; then
 	die "cannot be used without a working tree"
 fi
 
-# Aliases
 case $subcommand in
-	ls) real_subcommand=list;;
-	*) real_subcommand=$subcommand;;
-esac
-
-case $real_subcommand in
 	'') usage >&2;;
 	help|-h) exec git help ps;;
-	init|list|show|rebase|pull|isolate)
-		"git_ps_$real_subcommand" "$@"
+	init|rm|list|log|show|rebase|pull|isolate)
+		"git_ps_$subcommand" "$@"
 		;;
 	*)
 		die "unknown subcommand: \`$subcommand'"
