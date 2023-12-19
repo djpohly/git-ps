@@ -67,15 +67,15 @@ die() {
 get_branch() {
 	branch=$(git branch --show-current 2>/dev/null)
 
-  if [ -z "$branch" ]; then
-    # Detached
-    branch=HEAD
+	if [ -z "$branch" ]; then
+		# Detached
+		branch=HEAD
 		upstream_ref=GITPS_DETACHED_UPSTREAM
 		base_ref=GITPS_DETACHED_BASE
-  else
-    upstream_ref="refs/$branch/upstream"
-    base_ref="refs/$branch/base"
-  fi
+	else
+		upstream_ref="refs/$branch/upstream"
+		base_ref="refs/$branch/base"
+	fi
 }
 
 require_non_ps_branch() {
@@ -83,9 +83,9 @@ require_non_ps_branch() {
 	if [ "$branch" = HEAD ]; then
 		die "\`%s %s' requires a branch to be checked out" "$cmd" "$subcommand"
 	fi
-  case $branch in
-    ps/*) die "branch \`%s' is already a patch stack" "$branch";;
-  esac
+	case $branch in
+		ps/*) die "branch \`%s' is already a patch stack" "$branch";;
+	esac
 	if git symbolic-ref -q "refs/$branch/upstream" >/dev/null; then
 		die "branch \`%s' is already a patch stack" "$branch"
 	fi
@@ -98,26 +98,26 @@ require_ps() {
 	get_branch
 
 	if [ "$branch" != HEAD ]; then
-    # Ensure the checked out branch is in the refs/heads/ps namespace
-    case $branch in
-      ps/*) ;;
-      *) die "current branch \`%s' is not a patch stack" "$branch";;
-    esac
+		# Ensure the checked out branch is in the refs/heads/ps namespace
+		case $branch in
+			ps/*) ;;
+			*) die "current branch \`%s' is not a patch stack" "$branch";;
+		esac
 
-    # It is possible to `git switch' from a detached patch stack to a regular
-    # branch, leaving the GITPS_* refs in place.  We're not in detached HEAD
-    # state now, so remove the temporary refs if they're still around.
-    git symbolic-ref -d GITPS_DETACHED_UPSTREAM 2>/dev/null || true
-    git update-ref -d GITPS_DETACHED_BASE 2>/dev/null || true
-  fi
+		# It is possible to `git switch' from a detached patch stack to a regular
+		# branch, leaving the GITPS_* refs in place.  We're not in detached HEAD
+		# state now, so remove the temporary refs if they're still around.
+		git symbolic-ref -d GITPS_DETACHED_UPSTREAM 2>/dev/null || true
+		git update-ref -d GITPS_DETACHED_BASE 2>/dev/null || true
+	fi
 
-  # Read upstream and base refs
-  if ! upstream="$(git symbolic-ref -q "$upstream_ref")"; then
-    die "could not get upstream (not a patch stack?)"
-  fi
-  if ! base="$(git rev-parse --verify -q "${base_ref}^{commit}" 2>/dev/null)"; then
-    die "could not get base (not a patch stack?)"
-  fi
+	# Read upstream and base refs
+	if ! upstream="$(git symbolic-ref -q "$upstream_ref")"; then
+		die "could not get upstream (not a patch stack?)"
+	fi
+	if ! base="$(git rev-parse --verify -q "${base_ref}^{commit}" 2>/dev/null)"; then
+		die "could not get base (not a patch stack?)"
+	fi
 
 	# Sanity checks
 	if ! git merge-base --is-ancestor "$base" "$branch"; then
@@ -151,15 +151,15 @@ parse_patchnums() {
 }
 
 git_ps_new() {
-  # Need to be on a non-ps branch to use as upstream (for now, maybe upstream
-  # can be specified later)
+	# Need to be on a non-ps branch to use as upstream (for now, maybe upstream
+	# can be specified later)
 	require_non_ps_branch
 
 	upstream=$branch
 	branch="ps/${1:-$upstream}"
 
 	# Create new branch and record the upstream and base
-  git switch -c "$branch"
+	git switch -c "$branch"
 	git symbolic-ref "refs/$branch/upstream" "$upstream"
 	git update-ref "refs/$branch/base" "$upstream" ''
 
@@ -167,45 +167,45 @@ git_ps_new() {
 }
 
 git_ps_checkout() {
-  if [ $# -lt 1 ]; then
-    require_non_ps_branch
-  else
-    branch=$1
-  fi
-  if ! git checkout "ps/$branch" -- 2>/dev/null; then
-    die "no patch stack named \`%s'" "$branch"
-  fi
+	if [ $# -lt 1 ]; then
+		require_non_ps_branch
+	else
+		branch=$1
+	fi
+	if ! git checkout "ps/$branch" -- 2>/dev/null; then
+		die "no patch stack named \`%s'" "$branch"
+	fi
 }
 
 git_ps_delete() {
-  require_ps
-  if [ "$branch" = HEAD ]; then
-    # Detached patch stack
-    die "detached patch stack does not need to be deleted explicitly"
-  fi
+	require_ps
+	if [ "$branch" = HEAD ]; then
+		# Detached patch stack
+		die "detached patch stack does not need to be deleted explicitly"
+	fi
 
-  local force=
-  case $1 in
-    -f)
-      force=y
-      shift
-      ;;
-  esac
+	local force=
+	case $1 in
+		-f)
+			force=y
+			shift
+			;;
+	esac
 
 	# check to see if fully integrated?
-  if [ -z "$force" -a "$(git rev-list --count --cherry-pick --right-only "${upstream}...${branch}")" -ne 0 ]; then
-    die "patch stack \`%s' is not fully integrated (use -f to delete anyway)" "$branch"
-  fi
+	if [ -z "$force" -a "$(git rev-list --count --cherry-pick --right-only "${upstream}...${branch}")" -ne 0 ]; then
+		die "patch stack \`%s' is not fully integrated (use -f to delete anyway)" "$branch"
+	fi
 
-  git switch "${upstream#refs/heads/}"
-  git branch -D "$branch"
+	git switch "${upstream#refs/heads/}"
+	git branch -D "$branch"
 	git symbolic-ref -d "refs/$branch/upstream"
 	git update-ref -d "refs/$branch/base"
 }
 
 git_ps_list() {
 	# Lists all patch stacks
-  git branch --list 'ps/*'
+	git branch --list 'ps/*'
 }
 
 git_ps_log() {
@@ -237,10 +237,10 @@ git_ps_log() {
 		sha=${sha:1}
 		case $sigil in
 			+)
-        git -P rev-list -n1 --no-commit-header --pretty=format:"%Cblue$(printf '%3d' "$n")%C(auto)  %h  %<|(-1,trunc)%s" "$sha"
+				git -P rev-list -n1 --no-commit-header --pretty=format:"%Cblue$(printf '%3d' "$n")%C(auto)  %h  %<|(-1,trunc)%s" "$sha"
 				;;
 			=)
-        git -P rev-list -n1 --no-commit-header --pretty=format:"%Cblue$(printf '%3d' "$n")%Creset  [2;9m%h%Creset  %<|(-1,trunc)%s" "$sha"
+				git -P rev-list -n1 --no-commit-header --pretty=format:"%Cblue$(printf '%3d' "$n")%Creset  [2;9m%h%Creset  %<|(-1,trunc)%s" "$sha"
 				;;
 			*)
 				bug 'unexpected format from git rev-list'
@@ -273,40 +273,40 @@ git_ps_integrate() {
 	require_ps
 
 	# merge to upstream ref, update base
-  # can we squash, or will this not be detected by the original stack?
+	# can we squash, or will this not be detected by the original stack?
 }
 
 git_ps_rebase() {
 	require_ps
 
-  local interactive=
-  case $1 in
-    -i)
-      interactive=-i
-      shift
-      ;;
-  esac
+	local interactive=
+	case $1 in
+		-i)
+			interactive=-i
+			shift
+			;;
+	esac
 
-  git -c 'advice.skippedCherryPicks=false' rebase \
-    --no-keep-empty --empty=drop --no-rebase-merges \
-    $interactive \
-    --onto "${1:-$upstream}" "$base"
+	git -c 'advice.skippedCherryPicks=false' rebase \
+		--no-keep-empty --empty=drop --no-rebase-merges \
+		$interactive \
+		--onto "${1:-$upstream}" "$base"
 
-  if [ -n "$1" ]; then
-    # Need to update upstream
-    upstream=$1
-    git symbolic-ref "$upstream_ref" "$upstream"
-    git update-ref "$base_ref" "$upstream" "$base"
-    base=$upstream
-  fi
+	if [ -n "$1" ]; then
+		# Need to update upstream
+		upstream=$1
+		git symbolic-ref "$upstream_ref" "$upstream"
+		git update-ref "$base_ref" "$upstream" "$base"
+		base=$upstream
+	fi
 
 	# TODO: attempt some kind of rebase to linearize patches?  maybe this
 	# is just `git ps rebase'.
 
 	# -c 'advice.skippedCherryPicks=false'
-  # --no-keep-empty --empty=drop --no-rebase-merges
-  
-  # offer to remove patch stack if now fully merged
+	# --no-keep-empty --empty=drop --no-rebase-merges
+	
+	# offer to remove patch stack if now fully merged
 }
 
 git_ps_pull() {
