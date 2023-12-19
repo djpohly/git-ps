@@ -60,9 +60,17 @@ bug() {
 }
 
 die() {
+	local usage=
+	if [ "$1" = "-u" ]; then
+		usage=y
+		shift
+	fi
 	printf >&2 '%s: ' "$cmd_dash"
 	printf >&2 "$@"
 	printf >&2 '\n'
+	if [ -n "$usage" ]; then
+		usage >&2
+	fi
 	exit 1
 }
 
@@ -258,6 +266,9 @@ git_ps_log() {
 git_ps_show() {
 	require_ps
 
+	if [ $# -eq 0 ]; then
+		die -u "\`%s' requires an argument" "$subcommand"
+	fi
 	git show $(parse_patchnums "$@")
 }
 
@@ -338,6 +349,6 @@ case $subcommand in
 		"git_ps_$subcommand" "$@"
 		;;
 	*)
-		die "unknown subcommand: \`$subcommand'"
+		die -u "unknown subcommand: \`$subcommand'"
 		;;
 esac
