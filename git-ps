@@ -1,8 +1,10 @@
-#!/bin/bash -e
+#!/bin/bash
+set -euo pipefail
+IFS=$'\n\t'
 
 cmd_dash=$(basename -- "$0")
 cmd=${cmd_dash/git-/git }
-subcommand=$1
+subcommand=${1:-}
 # Don't exit if no subcommand is given
 shift || true
 
