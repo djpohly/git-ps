@@ -66,11 +66,21 @@ die() {
 
 get_branch() {
 	branch=$(git branch --show-current 2>/dev/null)
+
+  if [ -z "$branch" ]; then
+    # Detached
+    branch=HEAD
+		upstream_ref=GITPS_DETACHED_UPSTREAM
+		base_ref=GITPS_DETACHED_BASE
+  else
+    upstream_ref="refs/$branch/upstream"
+    base_ref="refs/$branch/base"
+  fi
 }
 
 require_non_ps_branch() {
 	get_branch
-	if [ -z "$branch" ]; then
+	if [ "$branch" = HEAD ]; then
 		die "\`%s %s' requires a branch to be checked out" "$cmd" "$subcommand"
 	fi
   case $branch in
@@ -87,32 +97,26 @@ require_non_ps_branch() {
 require_ps() {
 	get_branch
 
-	# It is possible to `git switch' from a detached patch stack to a
-	# regular branch, leaving the GIT_PS_* refs in place.
-	if [ -z "$branch" ]; then
-		# Detached HEAD, should be on a detached patch stack if
-		# anything.
-    branch=HEAD
-		upstream="$(git symbolic-ref -q GIT_PS_UPSTREAM)"
-		base="$(git rev-parse -q GIT_PS_BASE)"
-  else
+	if [ "$branch" != HEAD ]; then
+    # Ensure the checked out branch is in the refs/heads/ps namespace
     case $branch in
       ps/*) ;;
       *) die "current branch \`%s' is not a patch stack" "$branch";;
     esac
 
-    # Not in detached HEAD state, so there should be no detached patch stack
-    # active.  Remove the temporary refs if they exist.
-    git symbolic-ref -d GIT_PS_UPSTREAM 2>/dev/null || true
-    git update-ref -d GIT_PS_BASE 2>/dev/null || true
+    # It is possible to `git switch' from a detached patch stack to a regular
+    # branch, leaving the GITPS_* refs in place.  We're not in detached HEAD
+    # state now, so remove the temporary refs if they're still around.
+    git symbolic-ref -d GITPS_DETACHED_UPSTREAM 2>/dev/null || true
+    git update-ref -d GITPS_DETACHED_BASE 2>/dev/null || true
+  fi
 
-    # Get upstream and base from git config
-    if ! upstream="$(git symbolic-ref -q "refs/$branch/upstream")"; then
-      die "could not get upstream for branch \`%s' (not a patch stack?)" "$branch"
-    fi
-    if ! base="$(git rev-parse --verify -q "refs/$branch/base^{commit}" 2>/dev/null)"; then
-      die "could not get base for branch \`%s' (not a patch stack?)" "$branch"
-    fi
+  # Read upstream and base refs
+  if ! upstream="$(git symbolic-ref -q "$upstream_ref")"; then
+    die "could not get upstream (not a patch stack?)"
+  fi
+  if ! base="$(git rev-parse --verify -q "${base_ref}^{commit}" 2>/dev/null)"; then
+    die "could not get base (not a patch stack?)"
   fi
 
 	# Sanity checks
@@ -147,6 +151,8 @@ parse_patchnums() {
 }
 
 git_ps_new() {
+  # Need to be on a non-ps branch to use as upstream (for now, maybe upstream
+  # can be specified later)
 	require_non_ps_branch
 
 	upstream=$branch
@@ -161,8 +167,6 @@ git_ps_new() {
 }
 
 git_ps_checkout() {
-  get_branch
-
   if [ $# -lt 1 ]; then
     require_non_ps_branch
   else
@@ -291,14 +295,6 @@ git_ps_rebase() {
   if [ -n "$1" ]; then
     # Need to update upstream
     upstream=$1
-    if [ "$branch" = HEAD ]; then
-      # Detached
-      upstream_ref=GIT_PS_UPSTREAM
-      base_ref=GIT_PS_BASE
-    else
-      upstream_ref="refs/$branch/upstream"
-      base_ref="refs/$branch/base"
-    fi
     git symbolic-ref "$upstream_ref" "$upstream"
     git update-ref "$base_ref" "$upstream" "$base"
     base=$upstream
