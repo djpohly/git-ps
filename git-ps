@@ -43,6 +43,7 @@ usage() {
 		   or: $cmd list
 		   or: $cmd log
 		   or: $cmd show <id-or-range> [<id-or-range>...]
+		   or: $cmd todo <description>
 		   or: $cmd isolate <id-or-range> [<id-or-range>...]
 		   or: $cmd integrate
 		   or: $cmd rebase [-i] [<branch>]
@@ -272,6 +273,12 @@ git_ps_show() {
 	git show $(parse_patchnums "$@")
 }
 
+git_ps_todo() {
+	require_ps
+
+	git commit --allow-empty --only -m "$*"
+}
+
 git_ps_isolate() {
 	die "\`%s' not yet implemented" "$subcommand"
 
@@ -300,8 +307,10 @@ git_ps_rebase() {
 			;;
 	esac
 
+	# Keep patches which are empty (i.e. to-do) but not those
+	# which are newly empty because of the rebase.
 	git -c 'advice.skippedCherryPicks=false' rebase \
-		--no-keep-empty --empty=drop --no-rebase-merges \
+		--empty=drop --keep-empty --no-rebase-merges \
 		$interactive \
 		--onto "${1:-$upstream}" "$base"
 
@@ -345,7 +354,7 @@ fi
 case $subcommand in
 	'') usage >&2;;
 	help|-h) exec git help ps;;
-	new|checkout|delete|list|log|show|integrate|rebase|pull|isolate)
+	new|checkout|delete|list|log|show|todo|integrate|rebase|pull|isolate)
 		"git_ps_$subcommand" "$@"
 		;;
 	*)

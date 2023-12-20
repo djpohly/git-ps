@@ -19,6 +19,7 @@ SYNOPSIS
 |   **git ps list**
 |   **git ps log**
 |   **git ps show** <id-or-range> [<id-or-range>...]
+|   **git ps todo** <description>
 |   **git ps isolate** <id-or-range> [<id-or-range>...]
 |   **git ps integrate**
 |   **git ps rebase** [-i] [<branch>]
@@ -49,6 +50,9 @@ COMMANDS
 
 **show** <id-or-range> [<id-or-range>...]
   Displays the changes made by the specified patch.
+
+**todo** <description>
+  Adds an empty commit to the top of the stack with the provided message.
 
 **isolate** <id-or-range> [<id-or-range>...]
   Switches to a detached patch stack with only the given commit(s) applied on
