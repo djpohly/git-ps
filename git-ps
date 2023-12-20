@@ -300,7 +300,7 @@ git_ps_rebase() {
 	require_ps
 
 	local interactive=
-	case $1 in
+	case ${1-} in
 		-i)
 			interactive=-i
 			shift
@@ -314,7 +314,7 @@ git_ps_rebase() {
 		$interactive \
 		--onto "${1:-$upstream}" "$base"
 
-	if [ -n "$1" ]; then
+	if [ -n "${1-}" ]; then
 		# Need to update upstream
 		upstream=$1
 		git symbolic-ref "$upstream_ref" "$upstream"
