@@ -76,6 +76,12 @@ die() {
 	exit 1
 }
 
+plural() {
+	if [ "${2-}" != 1 ]; then
+		echo "$1"
+	fi
+}
+
 # Sets $branch to the current branch (or "" if detached).  Sets $upstream_ref
 # and $base_ref to the upstream and base ref names.
 get_branch() {
@@ -168,7 +174,7 @@ parse_patchnums() {
 	esac
 
 	# Read patch SHAs into an array
-	mapfile -t shas < <(git rev-list --right-only "$upstream...$branch")
+	mapfile -t shas < <(git rev-list --reverse --right-only "$upstream...$branch")
 	numshas=${#shas[@]}
 
 	for num; do
@@ -240,7 +246,7 @@ git_ps_delete() {
 
 	# check to see if fully integrated?
 	if [ -z "$force" -a "$(git rev-list --count --cherry-pick --right-only "$upstream...$branch")" -ne 0 ]; then
-		die "patch stack %s is not fully integrated (use -f to delete anyway)" "${branch+"\`$branch'"}"
+		die "patch stack%s is not fully integrated (use -f to delete anyway)" "${branch:+" \`$branch'"}"
 	fi
 
 	git switch "${upstream#refs/heads/}"
@@ -259,22 +265,16 @@ git_ps_list() {
 git_ps_log() {
 	require_ps
 
-	# config=(
-	# 	-c "branch.$branch.remote=."
-	# 	-c "branch.$branch.merge=$upstream"
-	# )
-	# git "${config[@]}" status
-
 	read behind cherry < <(git rev-list --cherry-mark --left-only --count "$upstream...$branch")
 	printf 'Patches'
 	if [ "$behind" -gt 0 ]; then
 		if [ "$cherry" -gt 0 ]; then
-			printf ' (%d commits behind upstream, %d already integrated)' "$behind" "$cherry"
+			printf ' (%d commit%s behind upstream, %d patch%s integrated)' "$behind" "$(plural s "$behind")" "$cherry" "$(plural es "$cherry")"
 		else
-			printf ' (%d commits behind upstream)' "$behind"
+			printf ' (%d commit%s behind upstream)' "$behind" "$(plural s "$behind")"
 		fi
 	elif [ "$cherry" -gt 0 ]; then
-		printf ' (%d already integrated)' "$cherry"
+		printf ' (%d patch%s already integrated)' "$cherry" "$(plural es "$cherry")"
 	fi
 	printf ':\n'
 
@@ -295,8 +295,8 @@ git_ps_log() {
 				;;
 		esac
 		git -P rev-list --no-walk --no-commit-header --pretty=format:"$format" "$sha"
-		let n+=1
-	done < <(git rev-list --cherry-mark --right-only "$upstream...$branch")
+		: $((n++))
+	done < <(git rev-list --reverse --cherry-mark --right-only "$upstream...$branch")
 	if [ "$(git rev-list --count --merges "$upstream..$branch")" -ne 0 ]; then
 		printf 'warning: patch stack contains merge commits, rebase to fix\n' "$cmd"
 	fi
