@@ -14,7 +14,7 @@ SYNOPSIS
 --------
 
 |   **git ps new** [<name>]
-|   **git ps checkout** [<name>]
+|   **git ps switch** [<name>]
 |   **git ps delete** [-f]
 |   **git ps list**
 |   **git ps log**
@@ -34,7 +34,7 @@ COMMANDS
   Creates a new patch stack on top of the current branch.  If no <name> is
   given, the default is to name it after the current branch.
 
-**checkout** [<name>]
+**switch** [<name>]
   Switches to the named patch stack (or the default stack for the current
   branch).
 
@@ -98,7 +98,7 @@ merging unfinished patches).  The intended workflow is as follows:
 
  6. If the patches are ready, merge the isolated stack into the upstream branch
     with ``git ps integrate``; otherwise, return to the patch stack with
-    ``git checkout`` or ``git switch``.
+    ``git switch``.
 
 
 SEE ALSO

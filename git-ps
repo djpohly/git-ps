@@ -38,7 +38,7 @@ branch=
 usage() {
 	cat <<- EOF
 		usage: $cmd new [<name>]
-		   or: $cmd checkout [<name>]
+		   or: $cmd switch [<name>]
 		   or: $cmd delete [-f]
 		   or: $cmd list
 		   or: $cmd log
@@ -121,11 +121,10 @@ require_ps() {
 			*) die "current branch \`%s' is not a patch stack" "$branch";;
 		esac
 
-		# It is possible to `git switch' from a detached patch stack to a regular
-		# branch, leaving the refs/ps/DETACHED_* refs in
-		# place.  We're not in detached HEAD state now, so
-		# remove the temporary refs if they're still
-		# around.
+		# It is possible to `git switch' from a detached patch stack
+		# to a regular branch, leaving the refs/ps/DETACHED_* refs in
+		# place.  We're not in detached HEAD state now, so remove the
+		# temporary refs if they're still around.
 		remove_detached_refs
 	fi
 
@@ -208,21 +207,22 @@ git_ps_new() {
 	require_non_ps_branch
 
 	upstream=$branch
-	branch="ps/${1:-$upstream}"
 
 	# Create new branch and record the upstream and base
-	git switch -c "$branch"
-	git symbolic-ref "refs/$branch/upstream" "$upstream"
-	git update-ref "refs/$branch/base" "$upstream" ''
+	git switch -c "ps/${1:-$upstream}"
+	get_branch
+
+	git symbolic-ref "$upstream_ref" "$upstream"
+	git update-ref "$base_ref" "$upstream" ''
 }
 
-git_ps_checkout() {
+git_ps_switch() {
 	if [ $# -lt 1 -o -z "$1" ]; then
 		require_non_ps_branch
 	else
 		branch=$1
 	fi
-	if ! git checkout "ps/$branch" -- 2>/dev/null; then
+	if ! git switch "ps/$branch" 2>/dev/null; then
 		die "no patch stack named \`%s'" "$branch"
 	fi
 }
@@ -317,7 +317,7 @@ git_ps_todo() {
 }
 
 detach_stack() {
-	git checkout -q --detach
+	git switch -q --detach
 	git symbolic-ref refs/ps/DETACHED_UPSTREAM "$upstream"
 	git update-ref refs/ps/DETACHED_BASE "$base"
 
@@ -439,7 +439,7 @@ fi
 get_branch
 
 case $subcommand in
-	new|checkout|list)
+	new|switch|list)
 		"git_ps_$subcommand" "$@"
 		;;
 	delete|log|show|todo|integrate|pick|rebase|pull|isolate)
