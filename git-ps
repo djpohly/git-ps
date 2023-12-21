@@ -367,7 +367,7 @@ git_ps_integrate() {
 
 	git fetch . HEAD:"$upstream"
 
-	if [ -n "$branch" ]; then
+	if [ -z "$branch" ]; then
 		# Merged a detached stack; there's no reason to
 		# stay there
 		git switch "${upstream#refs/heads/}"
