@@ -46,6 +46,7 @@ usage() {
 		   or: $cmd todo <description>
 		   or: $cmd isolate <id-or-range> [<id-or-range>...]
 		   or: $cmd integrate
+		   or: $cmd pick <id>
 		   or: $cmd rebase [-i] [<branch>]
 		   or: $cmd pull
 
@@ -279,6 +280,16 @@ git_ps_todo() {
 	git commit --allow-empty --only -m "$*"
 }
 
+# Takes a list of commit SHAs on standard input
+reorder_stack() {
+	sed 's/^/pick /' |
+	GIT_SEQUENCE_EDITOR='cat >' \
+	git -c 'advice.skippedCherryPicks=false' rebase -i \
+		--empty=keep --keep-empty --no-rebase-merges \
+		--committer-date-is-author-date \
+		--keep-base "$base"
+}
+
 git_ps_isolate() {
 	die "\`%s' not yet implemented" "$subcommand"
 
@@ -294,6 +305,26 @@ git_ps_integrate() {
 
 	# merge to upstream ref, update base
 	# can we squash, or will this not be detected by the original stack?
+}
+
+git_ps_pick() {
+	require_ps
+
+	if [ -z "${1-}" ]; then
+		die -u "\`%s' requires a patch id" "$subcommand"
+	fi
+
+	if [ "$1" = 0 ]; then
+		# Patch 0 is already at the top of the stack
+		return
+	fi
+
+	sha=$(parse_patchnums "$1")
+
+	{
+		git rev-list --reverse "$base".."$branch" | grep -Fxv "$sha"
+		echo "$sha"
+	} | reorder_stack
 }
 
 git_ps_rebase() {
@@ -354,7 +385,7 @@ fi
 case $subcommand in
 	'') usage >&2;;
 	help|-h) exec git help ps;;
-	new|checkout|delete|list|log|show|todo|integrate|rebase|pull|isolate)
+	new|checkout|delete|list|log|show|todo|integrate|pick|rebase|pull|isolate)
 		"git_ps_$subcommand" "$@"
 		;;
 	*)

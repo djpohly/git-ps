@@ -22,6 +22,7 @@ SYNOPSIS
 |   **git ps todo** <description>
 |   **git ps isolate** <id-or-range> [<id-or-range>...]
 |   **git ps integrate**
+|   **git ps pick** <id>
 |   **git ps rebase** [-i] [<branch>]
 |   **git ps pull**
 
@@ -61,6 +62,9 @@ COMMANDS
 **integrate**
   Merges the current patch stack into the upstream branch.  To merge only a
   portion of a stack, use ``git ps isolate`` first.
+
+**pick** <id>
+  Moves the specified patch to the top of the stack (e.g. for amending).
 
 **rebase** [-i] [<branch>]
   Rebases the current patch stack on top of any new commits in its upstream.
