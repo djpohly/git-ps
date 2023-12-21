@@ -280,6 +280,15 @@ git_ps_todo() {
 	git commit --allow-empty --only -m "$*"
 }
 
+detach_stack() {
+	git checkout -q --detach
+	git symbolic-ref "$upstream_ref" "$upstream"
+	git update-ref "$base_ref" "$upstream" "$base"
+
+	# Refresh variables
+	get_branch
+}
+
 # Takes a list of commit SHAs on standard input
 reorder_stack() {
 	sed 's/^/pick /' |
@@ -296,6 +305,9 @@ git_ps_isolate() {
 	# It's ok if the current patch stack is detached; we can isolate a
 	# subset of those.
 	require_ps
+
+	detach_stack
+	parse_patchnums "$@" | reorder_stack
 }
 
 git_ps_integrate() {
@@ -353,12 +365,6 @@ git_ps_rebase() {
 		base=$upstream
 	fi
 
-	# TODO: attempt some kind of rebase to linearize patches?  maybe this
-	# is just `git ps rebase'.
-
-	# -c 'advice.skippedCherryPicks=false'
-	# --no-keep-empty --empty=drop --no-rebase-merges
-	
 	# offer to remove patch stack if now fully merged
 }
 
