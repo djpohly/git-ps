@@ -108,6 +108,11 @@ require_non_ps_branch() {
 	fi
 }
 
+remove_detached_refs() {
+	git symbolic-ref -d refs/ps/DETACHED_UPSTREAM 2>/dev/null || true
+	git update-ref -d refs/ps/DETACHED_BASE 2>/dev/null || true
+}
+
 require_ps() {
 	if [ -n "$branch" ]; then
 		# Ensure the checked out branch is in the refs/heads/ps namespace
@@ -121,8 +126,7 @@ require_ps() {
 		# place.  We're not in detached HEAD state now, so
 		# remove the temporary refs if they're still
 		# around.
-		git symbolic-ref -d refs/ps/DETACHED_UPSTREAM 2>/dev/null || true
-		git update-ref -d refs/ps/DETACHED_BASE 2>/dev/null || true
+		remove_detached_refs
 	fi
 
 	# Read upstream and base refs
