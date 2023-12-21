@@ -430,6 +430,11 @@ case $subcommand in
 	help)
 		exec git help ps
 		;;
+
+	# Alias
+	checkout)
+		subcommand=switch
+		;;
 esac
 
 # Require a git directory and worktree
