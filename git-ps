@@ -82,8 +82,8 @@ get_branch() {
 	if [ -z "$branch" ]; then
 		# Detached
 		branch=HEAD
-		upstream_ref=GITPS_DETACHED_UPSTREAM
-		base_ref=GITPS_DETACHED_BASE
+		upstream_ref=refs/ps/DETACHED_UPSTREAM
+		base_ref=refs/ps/DETACHED_BASE
 	else
 		upstream_ref="refs/$branch/upstream"
 		base_ref="refs/$branch/base"
@@ -117,10 +117,12 @@ require_ps() {
 		esac
 
 		# It is possible to `git switch' from a detached patch stack to a regular
-		# branch, leaving the GITPS_* refs in place.  We're not in detached HEAD
-		# state now, so remove the temporary refs if they're still around.
-		git symbolic-ref -d GITPS_DETACHED_UPSTREAM 2>/dev/null || true
-		git update-ref -d GITPS_DETACHED_BASE 2>/dev/null || true
+		# branch, leaving the refs/ps/DETACHED_* refs in
+		# place.  We're not in detached HEAD state now, so
+		# remove the temporary refs if they're still
+		# around.
+		git symbolic-ref -d refs/ps/DETACHED_UPSTREAM 2>/dev/null || true
+		git update-ref -d refs/ps/DETACHED_BASE 2>/dev/null || true
 	fi
 
 	# Read upstream and base refs
@@ -210,9 +212,11 @@ git_ps_delete() {
 	fi
 
 	git switch "${upstream#refs/heads/}"
-	git branch -D "$branch"
-	git symbolic-ref -d "refs/$branch/upstream"
-	git update-ref -d "refs/$branch/base"
+	if [ "$branch" != HEAD ]; then
+		git branch -D "$branch"
+	fi
+	git symbolic-ref -d "$upstream_ref"
+	git update-ref -d "$base_ref"
 }
 
 git_ps_list() {
@@ -282,8 +286,8 @@ git_ps_todo() {
 
 detach_stack() {
 	git checkout -q --detach
-	git symbolic-ref "$upstream_ref" "$upstream"
-	git update-ref "$base_ref" "$upstream" "$base"
+	git symbolic-ref refs/ps/DETACHED_UPSTREAM "$upstream"
+	git update-ref refs/ps/DETACHED_BASE "$base"
 
 	# Refresh variables
 	get_branch
