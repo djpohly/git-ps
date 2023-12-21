@@ -176,8 +176,6 @@ git_ps_new() {
 	git switch -c "$branch"
 	git symbolic-ref "refs/$branch/upstream" "$upstream"
 	git update-ref "refs/$branch/base" "$upstream" ''
-
-	#git config "branch.$branch.rebase" true
 }
 
 git_ps_checkout() {
