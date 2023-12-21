@@ -283,12 +283,21 @@ git_ps_log() {
 	while read sha parent merge; do
 		sigil=${sha::1}
 		sha=${sha:1}
+
+		# Uncomment to mark patches which conflict with upstream
+		# if ! git merge-tree --no-messages --merge-base="$sha^" "$sha" "$upstream" >/dev/null; then
+		# 	sigil='!'
+		# fi
+		#
 		case $sigil in
 			+)
 				format="%Cblue$(printf '%3d' "$n")%C(auto)  %h  %<|(-1,trunc)%s"
 				;;
 			=)
 				format="%Cblue$(printf '%3d' "$n")%Creset  [2;9m%h%Creset✓ %<|(-1,trunc)%s"
+				;;
+			'!')
+				format="%Cblue$(printf '%3d' "$n")%Creset  %Cred%h%Creset! %<|(-1,trunc)%s"
 				;;
 			*)
 				bug 'unexpected format from git rev-list'
