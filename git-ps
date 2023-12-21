@@ -231,7 +231,7 @@ git_ps_delete() {
 	require_ps
 
 	local force=
-	case $1 in
+	case ${1-} in
 		-f)
 			force=y
 			shift
