@@ -285,15 +285,16 @@ git_ps_log() {
 		sha=${sha:1}
 		case $sigil in
 			+)
-				git -P rev-list --no-walk --no-commit-header --pretty=format:"%Cblue$(printf '%3d' "$n")%C(auto)  %h  %<|(-1,trunc)%s" "$sha"
+				format="%Cblue$(printf '%3d' "$n")%C(auto)  %h  %<|(-1,trunc)%s"
 				;;
 			=)
-				git -P rev-list --no-walk --no-commit-header --pretty=format:"%Cblue$(printf '%3d' "$n")%Creset  [2;9m%h%Creset  %<|(-1,trunc)%s" "$sha"
+				format="%Cblue$(printf '%3d' "$n")%Creset  [2;9m%h%Creset  %<|(-1,trunc)%s"
 				;;
 			*)
 				bug 'unexpected format from git rev-list'
 				;;
 		esac
+		git -P rev-list --no-walk --no-commit-header --pretty=format:"$format" "$sha"
 		let n+=1
 	done < <(git rev-list --cherry-mark --right-only "$upstream...$branch")
 	if [ "$(git rev-list --count --merges "$upstream..$branch")" -ne 0 ]; then
