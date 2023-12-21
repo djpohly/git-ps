@@ -311,12 +311,23 @@ git_ps_isolate() {
 }
 
 git_ps_integrate() {
-	die "\`%s' not yet implemented" "$subcommand"
-
 	require_ps
 
-	# merge to upstream ref, update base
-	# can we squash, or will this not be detected by the original stack?
+	# Add option to squash?  Git won't commit automatically as
+	# it will for a merge.
+
+	if ! git merge-base --is-ancestor "$upstream" "${branch:-HEAD}"; then
+		die "not up-to-date with upstream (rebase, re-test, and try again)" "$cmd"
+	fi
+
+	git fetch . HEAD:"$upstream"
+
+	if [ -n "$branch" ]; then
+		# Merged a detached stack; there's no reason to
+		# stay there
+		git switch "${upstream#refs/heads/}"
+		remove_detached_refs
+	fi
 }
 
 git_ps_pick() {
