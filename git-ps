@@ -76,12 +76,13 @@ die() {
 	exit 1
 }
 
+# Sets $branch to the current branch (or "" if detached).  Sets $upstream_ref
+# and $base_ref to the upstream and base ref names.
 get_branch() {
-	branch=$(git branch --show-current 2>/dev/null)
+	branch=$(git branch --show-current)
 
 	if [ -z "$branch" ]; then
 		# Detached
-		branch=HEAD
 		upstream_ref=refs/ps/DETACHED_UPSTREAM
 		base_ref=refs/ps/DETACHED_BASE
 	else
@@ -90,9 +91,10 @@ get_branch() {
 	fi
 }
 
+# Ensures that the current HEAD is on a branch which is not a patch set.  Sets
+# the same variables as get_branch().
 require_non_ps_branch() {
-	get_branch
-	if [ "$branch" = HEAD ]; then
+	if [ -z "$branch" ]; then
 		die "\`%s %s' requires a branch to be checked out" "$cmd" "$subcommand"
 	fi
 	case $branch in
@@ -107,9 +109,7 @@ require_non_ps_branch() {
 }
 
 require_ps() {
-	get_branch
-
-	if [ "$branch" != HEAD ]; then
+	if [ -n "$branch" ]; then
 		# Ensure the checked out branch is in the refs/heads/ps namespace
 		case $branch in
 			ps/*) ;;
@@ -134,20 +134,20 @@ require_ps() {
 	fi
 
 	# Sanity checks
-	if ! git merge-base --is-ancestor "$base" "$branch"; then
+	if ! git merge-base --is-ancestor "$base" "${branch:-HEAD}"; then
 		die "patch stack base is incorrect (consider running \`%s rebase')" "$cmd"
 	fi
 	if ! git merge-base --is-ancestor "$base" "$upstream"; then
 		die "patch stack base is not in upstream (consider running \`%s rebase')" "$cmd"
 	fi
-	if [ "$(git rev-list --count --min-parents=2 "$base".."$branch")" -ne 0 ]; then
+	if [ "$(git rev-list --count --min-parents=2 "$base..$branch")" -ne 0 ]; then
 		die "patch stack is not linear (consider running \`%s rebase')" "$cmd"
 	fi
 }
 
 parse_patchnums() {
 	local -a shas
-	mapfile -t shas < <(git rev-list --right-only "${upstream}...${branch}")
+	mapfile -t shas < <(git rev-list --right-only "$upstream...$branch")
 	for num; do
 		case $num in
 			*-*)
@@ -181,7 +181,7 @@ git_ps_new() {
 }
 
 git_ps_checkout() {
-	if [ $# -lt 1 ]; then
+	if [ $# -lt 1 -o -z "$1" ]; then
 		require_non_ps_branch
 	else
 		branch=$1
@@ -193,10 +193,6 @@ git_ps_checkout() {
 
 git_ps_delete() {
 	require_ps
-	if [ "$branch" = HEAD ]; then
-		# Detached patch stack
-		die "detached patch stack does not need to be deleted explicitly"
-	fi
 
 	local force=
 	case $1 in
@@ -207,12 +203,12 @@ git_ps_delete() {
 	esac
 
 	# check to see if fully integrated?
-	if [ -z "$force" -a "$(git rev-list --count --cherry-pick --right-only "${upstream}...${branch}")" -ne 0 ]; then
-		die "patch stack \`%s' is not fully integrated (use -f to delete anyway)" "$branch"
+	if [ -z "$force" -a "$(git rev-list --count --cherry-pick --right-only "$upstream...$branch")" -ne 0 ]; then
+		die "patch stack %s is not fully integrated (use -f to delete anyway)" "${branch+"\`$branch'"}"
 	fi
 
 	git switch "${upstream#refs/heads/}"
-	if [ "$branch" != HEAD ]; then
+	if [ -n "$branch" ]; then
 		git branch -D "$branch"
 	fi
 	git symbolic-ref -d "$upstream_ref"
@@ -233,7 +229,7 @@ git_ps_log() {
 	# )
 	# git "${config[@]}" status
 
-	read behind cherry < <(git rev-list --cherry-mark --left-only --count "${upstream}...${branch}")
+	read behind cherry < <(git rev-list --cherry-mark --left-only --count "$upstream...$branch")
 	printf 'Patches'
 	if [ "$behind" -gt 0 ]; then
 		if [ "$cherry" -gt 0 ]; then
@@ -263,8 +259,8 @@ git_ps_log() {
 				;;
 		esac
 		let n+=1
-	done < <(git rev-list --cherry-mark --right-only "${upstream}...${branch}")
-	if [ "$(git rev-list --count --merges "${upstream}..${branch}")" -ne 0 ]; then
+	done < <(git rev-list --cherry-mark --right-only "$upstream...$branch")
+	if [ "$(git rev-list --count --merges "$upstream..$branch")" -ne 0 ]; then
 		printf 'warning: patch stack contains merge commits, rebase to fix\n' "$cmd"
 	fi
 }
@@ -394,10 +390,15 @@ if [ "$(git rev-parse --is-inside-work-tree 2>/dev/null)" != true ]; then
 	die "cannot be used without a working tree"
 fi
 
+# Set $branch, $upstream_ref, and $base_ref
+get_branch
+
 case $subcommand in
-	'') usage >&2;;
-	help|-h) exec git help ps;;
-	new|checkout|delete|list|log|show|todo|integrate|pick|rebase|pull|isolate)
+	new|checkout|list)
+		"git_ps_$subcommand" "$@"
+		;;
+	delete|log|show|todo|integrate|pick|rebase|pull|isolate)
+		require_ps
 		"git_ps_$subcommand" "$@"
 		;;
 	*)
