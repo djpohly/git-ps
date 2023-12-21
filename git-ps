@@ -288,7 +288,7 @@ git_ps_log() {
 				format="%Cblue$(printf '%3d' "$n")%C(auto)  %h  %<|(-1,trunc)%s"
 				;;
 			=)
-				format="%Cblue$(printf '%3d' "$n")%Creset  [2;9m%h%Creset  %<|(-1,trunc)%s"
+				format="%Cblue$(printf '%3d' "$n")%Creset  [2;9m%h%Creset✓ %<|(-1,trunc)%s"
 				;;
 			*)
 				bug 'unexpected format from git rev-list'
