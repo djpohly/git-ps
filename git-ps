@@ -319,11 +319,12 @@ git_ps_todo() {
 
 detach_stack() {
 	git switch -q --detach
-	git symbolic-ref refs/ps/DETACHED_UPSTREAM "$upstream"
-	git update-ref refs/ps/DETACHED_BASE "$base"
 
 	# Refresh variables
 	get_branch
+
+	git symbolic-ref "$upstream_ref" "$upstream"
+	git update-ref "$base_ref" "$base"
 }
 
 # Takes a list of commit SHAs on standard input
