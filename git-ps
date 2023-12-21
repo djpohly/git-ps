@@ -149,19 +149,53 @@ require_ps() {
 	fi
 }
 
+validate_patchnums() {
+	max=$1
+	shift
+
+	local num
+	for num; do
+		test "$num" -ge 0 -a "$num" -lt "$max" 2>/dev/null || return 1
+	done
+}
+
 parse_patchnums() {
 	local -a shas
+	local -i start stop step numshas
+	local range=
+
+	case $1 in
+		-r) range=y; shift;;
+	esac
+
+	# Read patch SHAs into an array
 	mapfile -t shas < <(git rev-list --right-only "$upstream...$branch")
+	numshas=${#shas[@]}
+
 	for num; do
 		case $num in
-			*-*)
+			'')
+				continue
+				;;
+			?*-?*)
+				if [ -z "$range" ]; then
+					die "invalid patch id \`%s'" "$num"
+				fi
 				start=${num%%-*}
 				stop=${num#*-}
-				for subnum in $(seq -- "$start" "$stop"); do
+				if ! validate_patchnums "$numshas" "$start" "$stop"; then
+					die "invalid patch id range \`%s'" "$num"
+				fi
+
+				if [ "$start" -le "$stop" ]; then step=1; else step=-1; fi
+				for subnum in $(seq -- "$start" "$step" "$stop"); do
 					echo "${shas[$subnum]}"
 				done
 				;;
-			*)
+			?*)
+				if ! validate_patchnums "$numshas" "$num"; then
+					die "invalid patch id \`%s'" "$num"
+				fi
 				echo "${shas[$num]}"
 				;;
 		esac
@@ -273,7 +307,7 @@ git_ps_show() {
 	if [ $# -eq 0 ]; then
 		die -u "\`%s' requires an argument" "$subcommand"
 	fi
-	git show $(parse_patchnums "$@")
+	parse_patchnums -r "$@" | xargs -ro git show
 }
 
 git_ps_todo() {
@@ -307,7 +341,7 @@ git_ps_isolate() {
 	require_ps
 
 	detach_stack
-	parse_patchnums "$@" | reorder_stack
+	parse_patchnums -r "$@" | reorder_stack
 }
 
 git_ps_integrate() {
@@ -335,11 +369,6 @@ git_ps_pick() {
 
 	if [ -z "${1-}" ]; then
 		die -u "\`%s' requires a patch id" "$subcommand"
-	fi
-
-	if [ "$1" = 0 ]; then
-		# Patch 0 is already at the top of the stack
-		return
 	fi
 
 	sha=$(parse_patchnums "$1")
