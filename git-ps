@@ -421,9 +421,12 @@ git_ps_pull() {
 
 # Commands that don't require a git environment
 case $subcommand in
-	-h)
+	''|-h)
 		usage
 		exit 0
+		;;
+	help)
+		exec git help ps
 		;;
 esac
 
