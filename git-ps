@@ -249,10 +249,10 @@ git_ps_log() {
 		sha=${sha:1}
 		case $sigil in
 			+)
-				git -P rev-list -n1 --no-commit-header --pretty=format:"%Cblue$(printf '%3d' "$n")%C(auto)  %h  %<|(-1,trunc)%s" "$sha"
+				git -P rev-list --no-walk --no-commit-header --pretty=format:"%Cblue$(printf '%3d' "$n")%C(auto)  %h  %<|(-1,trunc)%s" "$sha"
 				;;
 			=)
-				git -P rev-list -n1 --no-commit-header --pretty=format:"%Cblue$(printf '%3d' "$n")%Creset  [2;9m%h%Creset  %<|(-1,trunc)%s" "$sha"
+				git -P rev-list --no-walk --no-commit-header --pretty=format:"%Cblue$(printf '%3d' "$n")%Creset  [2;9m%h%Creset  %<|(-1,trunc)%s" "$sha"
 				;;
 			*)
 				bug 'unexpected format from git rev-list'
