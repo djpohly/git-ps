@@ -300,8 +300,6 @@ reorder_stack() {
 }
 
 git_ps_isolate() {
-	die "\`%s' not yet implemented" "$subcommand"
-
 	# It's ok if the current patch stack is detached; we can isolate a
 	# subset of those.
 	require_ps
@@ -369,9 +367,13 @@ git_ps_rebase() {
 }
 
 git_ps_pull() {
-	die "\`%s' not yet implemented" "$subcommand"
-
 	require_ps
+
+	remote="$(git config --local --get --default=origin "branch.$upstream.remote")"
+	remoteref="$(git config --local --get --default="$upstream" "branch.$upstream.merge")"
+
+	git fetch "$remote" "$remoteref:$upstream"
+	git_ps_rebase
 }
 
 
